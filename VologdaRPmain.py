@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 # ====================== НАСТРОЙКИ ======================
-TOKEN = "8749870948:AAH8lMBj5Cb5VWA9eEllg4SLpCi0ZkBBQfI"
+TOKEN = "9225027536:AAFe8GO3JGxINWax6R54lVb8HziDgLXW3e0"
 ADMIN_ID = 6208939931       
 SAVE_FILE = "users.json"
 
