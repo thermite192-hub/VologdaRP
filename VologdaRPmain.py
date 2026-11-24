@@ -11,8 +11,8 @@ from telegram.ext import (
 )
 
 # ====================== НАСТРОЙКИ ======================
-TOKEN = "СЮДА_ВСТАВЬ_ТОКЕН_ОТ_BOTFATHER"
-ADMIN_ID = 123456789          # ← ОБЯЗАТЕЛЬНО ЗАМЕНИ НА СВОЙ ID
+TOKEN = "8943539460:AAF1MUvJSEqMapzKCicNpnxpQpyASMmhokI"
+ADMIN_ID = @morgen_ii        
 SAVE_FILE = "users.json"
 
 # ====================== ДАННЫЕ ======================
