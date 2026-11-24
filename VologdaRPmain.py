@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 # ====================== НАСТРОЙКИ ======================
-TOKEN = "8943539460:AAF1MUvJSEqMapzKCicNpnxpQpyASMmhokI"
+TOKEN = "https://github.com/thermite192-hub/VologdaRP/blob/main/VologdaRPmain.py"
 ADMIN_ID = 6208939931       
 SAVE_FILE = "users.json"
 
