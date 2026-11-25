@@ -183,17 +183,15 @@ XP_FOR_LEVEL = lambda lvl: 80 + lvl * 45
 
 def main_keyboard():
     keyboard = [
-        [KeyboardButton("💼 Работать"), KeyboardButton("📊 Профиль")],
-        [KeyboardButton("🏪 Бизнесы"), KeyboardButton("🚗 Транспорт")],
-        [KeyboardButton("🏠 Дома"), KeyboardButton("🎒 Инвентарь")],
-        [KeyboardButton("🌍 Город"), KeyboardButton("⛽ Поехать")],
-        [KeyboardButton("💰 Доход"), KeyboardButton("🎁 Бонус")],
-        [KeyboardButton("₿ Крипта"), KeyboardButton("🏛 ГИБДД")],
-        [KeyboardButton("🛒 24/7"), KeyboardButton("🏥 Поликлиника")],
-        [KeyboardButton("📦 Авито"), KeyboardButton("🏆 Топ")],
-        [KeyboardButton("📜 Статусы")],
+        [KeyboardButton("🚶 Улица"), KeyboardButton("📊 Статистика")],
+        [KeyboardButton("💼 Работа"), KeyboardButton("🎒 Инвентарь")],
+        [KeyboardButton("🏙 Город"), KeyboardButton("⛽ Поехать")],
+        [KeyboardButton("🛒 Магазины"), KeyboardButton("🏛 Сервисы")],
+        [KeyboardButton("🎁 Бонус"), KeyboardButton("🏆 Топ")],
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+
+
 
 def load_users():
     if os.path.exists(SAVE_FILE):
@@ -228,7 +226,7 @@ def _new_user(username, full_name, user_id):
         "yachts": {k: 0 for k in YACHTS},
         "planes": {k: 0 for k in PLANES},
         "last_work": 0, "last_daily": 0, "daily_streak": 0,
-        "is_admin": user_id == ADMIN_ID, "pending_job": None,
+        "is_admin": user_id == ADMIN_ID, "pending_job": None, "awaiting_nick": False,
         "health": 100, "hunger": 100, "fatigue": 0, "last_needs": time.time(), "dead": False,
         "inventory": {}, "current_car": None, "car_fuel": {}, "plates": [], "sims": [],
         "crypto": 0.0, "basement": False, "gpus": [], "frames": [], "active_frame": None, "last_crypto": time.time(),
@@ -241,13 +239,24 @@ def _migrate(u):
     for k in YACHTS: u.setdefault("yachts", {})[k] = u.get("yachts", {}).get(k, 0)
     for k in PLANES: u.setdefault("planes", {})[k] = u.get("planes", {}).get(k, 0)
     defaults = {
-        "location": "vologda", "last_work": 0, "last_daily": 0, "daily_streak": 0, "pending_job": None,
+        "location": "vologda", "last_work": 0, "last_daily": 0, "daily_streak": 0, "pending_job": None, "awaiting_nick": False,
         "xp": 0, "health": 100, "hunger": 100, "fatigue": 0, "last_needs": time.time(), "dead": False,
         "inventory": {}, "current_car": None, "car_fuel": {}, "plates": [], "sims": [],
         "crypto": 0.0, "basement": False, "gpus": [], "frames": [], "active_frame": None, "last_crypto": time.time(),
     }
     for k, v in defaults.items():
         u.setdefault(k, v)
+
+
+def valid_nick(name: str) -> bool:
+    """Формат: Имя_Отчество (например Гена_Генадьевич). Только буквы и один _."""
+    if not name or name.count("_") != 1:
+        return False
+    left, right = name.split("_", 1)
+    if len(left) < 2 or len(right) < 2:
+        return False
+    import re
+    return bool(re.fullmatch(r"[А-Яа-яЁёA-Za-z]+", left)) and bool(re.fullmatch(r"[А-Яа-яЁёA-Za-z]+", right))
 
 def is_admin(uid): return uid == ADMIN_ID
 
@@ -393,27 +402,37 @@ def generate_minigame():
 
 # ====================== КОМАНДЫ ======================
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(update.effective_user.id, update.effective_user.username, update.effective_user.full_name)
     update_needs(user)
-    if not user["registered"]:
-        user["registered"] = True
+
+    if not user.get("registered") or not valid_nick(user.get("full_name", "")):
+        user["registered"] = False
+        user["awaiting_nick"] = True
         save_users()
-        text = (
-            f"Добро пожаловать, *{user['full_name']}*!\n"
-            f"Ты в *Вологде*. Следи за здоровьем, голодом и усталостью.\n"
-            f"Работай, покупай транспорт, езди сам, майни крипту, собирай номера.\nУдачи!"
+        await update.message.reply_text(
+            "👋 Добро пожаловать!\n\n"
+            "Введи свой *игровой ник* в формате:\n"
+            "`Имя_Отчество`\n\n"
+            "Примеры: `Гена_Генадьевич`, `Анна_Ивановна`, `Max_Petrov`\n"
+            "Только буквы и один знак `_`. Другие варианты не подойдут.",
+            parse_mode="Markdown"
         )
-        if is_admin(update.effective_user.id): text += "\n\n👑 Ты Создатель."
-    else:
-        loc = LOCATIONS[user["location"]]
-        text = (
-            f"С возвращением!\nСтатус: *{get_status(user)}* | Ур. *{user['level']}*\n"
-            f"Город: *{loc['name']}*\n💰 {user['money']:,} ₽ | ₿ {user.get('crypto', 0):.1f}\n"
-            f"❤️ {user.get('health', 100):.0f} | 🍗 {user.get('hunger', 100):.0f} | 😴 {user.get('fatigue', 0):.0f}"
-        )
-        if user.get("dead"): text += "\n\n💀 Ты в больнице. Иди в Поликлинику."
+        return
+
+    loc = LOCATIONS[user["location"]]
+    text = (
+        f"С возвращением, *{user['full_name']}*!\n"
+        f"Статус: *{get_status(user)}* | Ур. *{user['level']}*\n"
+        f"Город: *{loc['name']}*\n"
+        f"💰 {user['money']:,} ₽ | ₿ {user.get('crypto', 0):.1f}\n"
+        f"❤️ {user.get('health', 100):.0f} | 🍗 {user.get('hunger', 100):.0f} | 😴 {user.get('fatigue', 0):.0f}"
+    )
+    if user.get("dead"):
+        text += "\n\n💀 Ты в больнице. Зайди в Сервисы → Поликлиника."
     await update.message.reply_text(text, parse_mode="Markdown", reply_markup=main_keyboard())
+
 
 async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(update.effective_user.id)
@@ -543,6 +562,72 @@ async def city_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton(f"{loc['name']} — {loc['price']:,} ₽ (такси){' ✅' if lid == current else ''}", callback_data=f"moveto_{lid}")] for lid, loc in LOCATIONS.items()]
     await update.message.reply_text(f"Сейчас: *{LOCATIONS[current]['name']}*\nТакси — быстро, но дорого.\nИли «⛽ Поехать» своим ходом.", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
+
+async def yachts_shop(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = get_user(update.effective_user.id)
+    loc = user["location"]
+    available = [(k, v) for k, v in YACHTS.items() if item_available(v, loc)]
+    if not available:
+        return await update.message.reply_text("Яхты доступны только в портовых/богатых городах (СПб, Стамбул, Дубай, Монако...).")
+    keyboard = [[InlineKeyboardButton(f"{v['name']} — {v['price']:,} ₽ (×{user.get('yachts', {}).get(k, 0)})", callback_data=f"buyyacht_{k}")] for k, v in available]
+    await update.message.reply_text(f"Яхты в *{LOCATIONS[loc]['name']}*:", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+
+async def planes_shop(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = get_user(update.effective_user.id)
+    loc = user["location"]
+    available = [(k, v) for k, v in PLANES.items() if item_available(v, loc)]
+    if not available:
+        return await update.message.reply_text("Самолёты доступны в крупных городах (Москва, Дубай, Лондон, Монако...).")
+    keyboard = [[InlineKeyboardButton(f"{v['name']} — {v['price']:,} ₽ (×{user.get('planes', {}).get(k, 0)})", callback_data=f"buyplane_{k}")] for k, v in available]
+    await update.message.reply_text(f"Авиация в *{LOCATIONS[loc]['name']}*:", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+
+async def luxury_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("🚤 Яхты", callback_data="open_yachts")],
+        [InlineKeyboardButton("✈️ Самолёты", callback_data="open_planes")],
+    ]
+    await update.message.reply_text("*🛥 Роскошный транспорт*", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+
+
+async def street_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Улица — основные действия"""
+    keyboard = [
+        [InlineKeyboardButton("💼 Работать", callback_data="go_work")],
+        [InlineKeyboardButton("💰 Собрать доход", callback_data="go_collect")],
+        [InlineKeyboardButton("🎁 Ежедневный бонус", callback_data="go_daily")],
+        [InlineKeyboardButton("⛽ Поехать", callback_data="go_drive")],
+    ]
+    await update.message.reply_text("*🚶 Улица*\nЧто делаем?", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+
+async def stats_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Статистика"""
+    keyboard = [
+        [InlineKeyboardButton("📊 Профиль", callback_data="go_profile")],
+        [InlineKeyboardButton("📜 Статусы", callback_data="go_statuses")],
+        [InlineKeyboardButton("🏆 Топ игроков", callback_data="go_top")],
+    ]
+    await update.message.reply_text("*📊 Статистика*", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+
+async def shops_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("🏪 Бизнесы", callback_data="go_shop")],
+        [InlineKeyboardButton("🚗 Транспорт", callback_data="go_cars")],
+        [InlineKeyboardButton("🏠 Дома", callback_data="go_houses")],
+        [InlineKeyboardButton("🛥 Яхты / Самолёты", callback_data="go_luxury")],
+        [InlineKeyboardButton("🛒 24/7", callback_data="go_247")],
+        [InlineKeyboardButton("📦 Авито", callback_data="go_avito")],
+    ]
+    await update.message.reply_text("*🛒 Магазины*", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+
+async def services_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("₿ Крипта", callback_data="go_crypto")],
+        [InlineKeyboardButton("🏛 ГИБДД", callback_data="go_gibdd")],
+        [InlineKeyboardButton("🏥 Поликлиника", callback_data="go_clinic")],
+        [InlineKeyboardButton("🎒 Инвентарь", callback_data="go_inv")],
+    ]
+    await update.message.reply_text("*🏛 Сервисы*", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+
 async def inventory_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(update.effective_user.id)
     update_needs(user)
@@ -657,6 +742,172 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(query.from_user.id)
     data = query.data
     update_needs(user)
+
+    # Быстрые переходы из подменю (остаёмся в том же сообщении где возможно)
+    if data == "go_work":
+        # эмулируем work_menu через edit
+        user = get_user(query.from_user.id)
+        update_needs(user)
+        if user.get("dead"):
+            return await query.edit_message_text("💀 Сначала поликлиника.")
+        if user.get("fatigue", 0) >= 85:
+            return await query.edit_message_text("😴 Слишком устал.")
+        if user.get("hunger", 100) < 15:
+            return await query.edit_message_text("🍗 Слишком голоден.")
+        keyboard = []
+        for jid, job in JOBS.items():
+            avail = user["level"] >= job["min_level"]
+            mark = "✅" if avail else f"🔒{job['min_level']}ур"
+            keyboard.append([InlineKeyboardButton(f"{job['name']} ({job['pay_min']}-{job['pay_max']}₽) {mark}", callback_data=f"job_{jid}")])
+        await query.edit_message_text("Выбери работу (мини-игра + XP + усталость):", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    if data == "go_collect":
+        user = get_user(query.from_user.id)
+        income = calculate_passive_income(user)
+        if income == 0:
+            return await query.edit_message_text("Нет бизнесов.")
+        user["money"] += income
+        save_users()
+        await query.edit_message_text(f"Получено: *{income:,} ₽*\nБаланс: *{user['money']:,} ₽*", parse_mode="Markdown")
+        return
+
+    if data == "go_daily":
+        # вызываем логику daily но через edit — упростим: просто напишем нажать кнопку
+        await query.edit_message_text("Нажми кнопку «🎁 Бонус» внизу для ежедневного бонуса.")
+        return
+
+    if data == "go_profile":
+        # краткий профиль в edit
+        user = get_user(query.from_user.id)
+        update_needs(user)
+        loc = LOCATIONS[user["location"]]
+        text = (
+            f"*{user['full_name']}*\n"
+            f"Ур.{user['level']} | {get_status(user)}\n"
+            f"{loc['name']} | 💰 {user['money']:,} ₽\n"
+            f"❤️{user.get('health',100):.0f} 🍗{user.get('hunger',100):.0f} 😴{user.get('fatigue',0):.0f}"
+        )
+        await query.edit_message_text(text, parse_mode="Markdown")
+        return
+
+    if data == "go_statuses":
+        user = get_user(query.from_user.id)
+        text = "*Статусы:*\n\n"
+        for s in STATUSES:
+            mark = "✅" if user["money"] >= s["min_money"] else "🔒"
+            text += f"{mark} {s['name']} — от {s['min_money']:,} ₽\n"
+        await query.edit_message_text(text, parse_mode="Markdown")
+        return
+
+    if data == "go_top":
+        sorted_users = sorted(users.values(), key=lambda x: x["money"], reverse=True)[:10]
+        text = "*🏆 Топ-10:*\n\n"
+        for i, u in enumerate(sorted_users, 1):
+            medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(i, f"{i}.")
+            text += f"{medal} {u.get('full_name', 'Игрок')} — {u['money']:,} ₽\n"
+        await query.edit_message_text(text, parse_mode="Markdown")
+        return
+
+    if data == "go_shop":
+        user = get_user(query.from_user.id)
+        loc = user["location"]
+        available = [(k, v) for k, v in BUSINESSES.items() if item_available(v, loc)]
+        if not available:
+            return await query.edit_message_text("В этом городе нет бизнесов.")
+        keyboard = [[InlineKeyboardButton(f"{v['name']} — {v['price']:,} ₽", callback_data=f"buybiz_{k}")] for k, v in available]
+        await query.edit_message_text(f"Бизнесы (*{LOCATIONS[loc]['name']}*):", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return
+
+    if data == "go_cars":
+        user = get_user(query.from_user.id)
+        loc = user["location"]
+        available = [(k, v) for k, v in CARS.items() if item_available(v, loc)]
+        keyboard = [[InlineKeyboardButton(f"{v['name']} — {v['price']:,} ₽", callback_data=f"buycar_{k}")] for k, v in available]
+        keyboard.append([InlineKeyboardButton("🔑 Выбрать авто", callback_data="select_car")])
+        keyboard.append([InlineKeyboardButton("⛽ Заправить", callback_data="refuel")])
+        await query.edit_message_text(f"Транспорт (*{LOCATIONS[loc]['name']}*):", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return
+
+    if data == "go_houses":
+        user = get_user(query.from_user.id)
+        loc = user["location"]
+        available = [(k, v) for k, v in HOUSES.items() if item_available(v, loc)]
+        keyboard = [[InlineKeyboardButton(f"{v['name']} — {v['price']:,} ₽", callback_data=f"buyhouse_{k}")] for k, v in available]
+        if has_any_house(user) and not user.get("basement"):
+            keyboard.append([InlineKeyboardButton(f"🔧 Подвал — {BASEMENT_PRICE:,} ₽", callback_data="buy_basement")])
+        await query.edit_message_text(f"Дома (*{LOCATIONS[loc]['name']}*):", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return
+
+    if data == "go_luxury":
+        keyboard = [
+            [InlineKeyboardButton("🚤 Яхты", callback_data="open_yachts")],
+            [InlineKeyboardButton("✈️ Самолёты", callback_data="open_planes")],
+        ]
+        await query.edit_message_text("*🛥 Роскошь*", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return
+
+    if data == "go_247":
+        keyboard = [[InlineKeyboardButton(f"{v['name']} — {v['price']:,} ₽", callback_data=f"buyitem_{k}")] for k, v in ITEMS.items()]
+        await query.edit_message_text("*🛒 24/7*", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return
+
+    if data == "go_avito":
+        keyboard = [
+            [InlineKeyboardButton("🖥 Видеокарты", callback_data="crypto_avito")],
+            [InlineKeyboardButton("🚗 Машины", callback_data="avito_cars")],
+            [InlineKeyboardButton("🏠 Жильё", callback_data="avito_houses")],
+            [InlineKeyboardButton("📦 Случайное", callback_data="avito_random")],
+        ]
+        await query.edit_message_text("*📦 Авито*", reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return
+
+    if data == "go_crypto":
+        user = get_user(query.from_user.id)
+        hashrate = get_total_hashrate(user)
+        pending = calculate_crypto_income(user)
+        text = f"*₿ Крипта*\nБаланс: {user.get('crypto',0):.2f} ₿\nК сбору: {pending:.2f}\nХешрейт: {hashrate}"
+        keyboard = [
+            [InlineKeyboardButton("⛏ Собрать", callback_data="crypto_collect")],
+            [InlineKeyboardButton("🛒 DNS", callback_data="crypto_dns"), InlineKeyboardButton("📦 Авито", callback_data="crypto_avito")],
+            [InlineKeyboardButton("🖥 Карты", callback_data="crypto_my_gpus"), InlineKeyboardButton("🔧 Рамы", callback_data="crypto_frames")],
+            [InlineKeyboardButton("💸 Продать", callback_data="crypto_sell")],
+        ]
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return
+
+    if data == "go_gibdd":
+        user = get_user(query.from_user.id)
+        plates = user.get("plates", [])
+        text = f"*🏛 ГИБДД*\nНомеров: {len(plates)}"
+        keyboard = [
+            [InlineKeyboardButton("🎲 Купить Н/З", callback_data="buy_plate")],
+            [InlineKeyboardButton("💰 Продать", callback_data="sell_plate_menu")],
+        ]
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return
+
+    if data == "go_clinic":
+        user = get_user(query.from_user.id)
+        text = f"*🏥 Поликлиника*\n❤️ {user.get('health',100):.0f}/100"
+        if user.get("dead"): text += "\n💀 Нужна реанимация"
+        keyboard = [
+            [InlineKeyboardButton("💊 Витамины", callback_data="buyitem_pills")],
+            [InlineKeyboardButton("🩹 Аптечка", callback_data="buyitem_medkit")],
+            [InlineKeyboardButton("💉 Реанимация 15к", callback_data="revive")],
+            [InlineKeyboardButton("🛏 Отдых 2к", callback_data="rest")],
+        ]
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return
+
+    if data == "go_inv":
+        await query.edit_message_text("Открой «🎒 Инвентарь» кнопкой внизу — там предметы и SIM.")
+        return
+
+    if data == "go_drive":
+        await query.edit_message_text("Нажми «⛽ Поехать» внизу, чтобы выбрать город и поехать на своём авто.")
+        return
+
 
     if data.startswith("job_"):
         if user.get("dead"): return await query.edit_message_text("💀 Сначала поликлиника.")
@@ -1170,17 +1421,61 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(f"Установлено {len(to_inst)} карт. Хешрейт: {get_total_hashrate(user)}")
         return
 
+
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
+    user = get_user(update.effective_user.id, update.effective_user.username, update.effective_user.full_name)
+    text = (update.message.text or "").strip()
+
+    # Регистрация ника
+    if user.get("awaiting_nick") or (not user.get("registered") and not valid_nick(user.get("full_name", ""))):
+        if valid_nick(text):
+            user["full_name"] = text
+            user["registered"] = True
+            user["awaiting_nick"] = False
+            save_users()
+            await update.message.reply_text(
+                f"✅ Ник принят: *{text}*\n\nДобро пожаловать в игру! Ты в Вологде.",
+                parse_mode="Markdown",
+                reply_markup=main_keyboard()
+            )
+        else:
+            await update.message.reply_text(
+                "❌ Неверный формат.\nНужно: `Имя_Отчество`\nПример: `Гена_Генадьевич`",
+                parse_mode="Markdown"
+            )
+        return
+
+    if not user.get("registered"):
+        return await update.message.reply_text("Нажми /start и введи ник.")
+
     mapping = {
-        "💼 Работать": work_menu, "📊 Профиль": status_cmd, "🏪 Бизнесы": shop, "🚗 Транспорт": cars_shop,
-        "🏠 Дома": houses_shop, "🌍 Город": city_menu, "💰 Доход": collect, "🎁 Бонус": daily,
-        "🏆 Топ": top_players, "📜 Статусы": statuses_list, "₿ Крипта": crypto_menu,
-        "🎒 Инвентарь": inventory_cmd, "🛒 24/7": shop_247, "🏥 Поликлиника": clinic,
-        "🏛 ГИБДД": gibdd, "⛽ Поехать": drive_menu, "📦 Авито": avito_menu,
+        "🚶 Улица": street_menu,
+        "📊 Статистика": stats_menu,
+        "💼 Работа": work_menu,
+        "🎒 Инвентарь": inventory_cmd,
+        "🏙 Город": city_menu,
+        "⛽ Поехать": drive_menu,
+        "🛒 Магазины": shops_menu,
+        "🏛 Сервисы": services_menu,
+        "🎁 Бонус": daily,
+        "🏆 Топ": top_players,
+        "💼 Работать": work_menu,
+        "📊 Профиль": status_cmd,
+        "🏪 Бизнесы": shop,
+        "🚗 Транспорт": cars_shop,
+        "🏠 Дома": houses_shop,
+        "₿ Крипта": crypto_menu,
+        "🛒 24/7": shop_247,
+        "🏥 Поликлиника": clinic,
+        "🏛 ГИБДД": gibdd,
+        "📦 Авито": avito_menu,
+        "🛥 Яхты/Самолёты": luxury_menu,
+        "📜 Статусы": statuses_list,
     }
     handler = mapping.get(text)
-    if handler: await handler(update, context)
+    if handler:
+        await handler(update, context)
+
 
 async def admin_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id): return await update.message.reply_text("Нет доступа.")
