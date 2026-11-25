@@ -11,8 +11,8 @@ from telegram.ext import (
 )
 
 # ====================== НАСТРОЙКИ ======================
-TOKEN = "9225027536:AAFe8GO3JGxINWax6R54lVb8HziDgLXW3e0"
-ADMIN_ID =   6208939931        # ← ОБЯЗАТЕЛЬНО ЗАМЕНИ НА СВОЙ ID
+TOKEN = "СЮДА_ВСТАВЬ_ТОКЕН_ОТ_BOTFATHER"
+ADMIN_ID = 123456789          # ← ОБЯЗАТЕЛЬНО ЗАМЕНИ НА СВОЙ ID
 SAVE_FILE = "users.json"
 
 # ====================== ДАННЫЕ ======================
@@ -30,9 +30,7 @@ JOBS = {
     "oligarch_work": {"name": "Совет директоров",   "min_level": 25, "pay_min": 8000,  "pay_max": 18000, "cooldown": 18},
 }
 
-# Бизнесы: available_in — в каких городах можно купить
 BUSINESSES = {
-    # Вологда и малые города
     "kiosk":       {"name": "Киоск",               "price": 5_000,       "income": 90,     "available_in": ["vologda", "kazan", "ekb", "ufa"]},
     "shop":        {"name": "Магазин",             "price": 25_000,      "income": 380,    "available_in": ["vologda", "kazan", "ekb", "ufa", "spb"]},
     "cafe":        {"name": "Кафе",                "price": 90_000,      "income": 1_400,  "available_in": ["vologda", "kazan", "ekb", "spb", "moscow"]},
@@ -51,7 +49,6 @@ BUSINESSES = {
 }
 
 CARS = {
-    # Доступны почти везде, но премиум — в крупных городах
     "lada":       {"name": "Лада Гранта",         "price": 800_000,     "available_in": ["vologda", "ufa", "kazan", "ekb", "spb", "moscow"]},
     "solaris":    {"name": "Hyundai Solaris",     "price": 1_600_000,   "available_in": ["vologda", "kazan", "ekb", "spb", "moscow"]},
     "camry":      {"name": "Toyota Camry",        "price": 3_800_000,   "available_in": ["kazan", "ekb", "spb", "moscow", "istanbul"]},
@@ -124,6 +121,33 @@ STATUSES = [
     {"name": "Олигарх",          "min_money": 10_000_000_000},
 ]
 
+# ====================== КРИПТОВАЛЮТА ======================
+
+# Видеокарты: hashrate в единицах/час, цены в ₽
+GPUS = {
+    "rx580":      {"name": "RX 580 8GB",       "hashrate": 28,  "price_dns": 18_000,  "avito_min": 9_000,  "avito_max": 16_000},
+    "gtx1660":    {"name": "GTX 1660 Super",   "hashrate": 32,  "price_dns": 25_000,  "avito_min": 14_000, "avito_max": 22_000},
+    "rtx3060":    {"name": "RTX 3060",         "hashrate": 48,  "price_dns": 42_000,  "avito_min": 25_000, "avito_max": 38_000},
+    "rtx3070":    {"name": "RTX 3070",         "hashrate": 62,  "price_dns": 65_000,  "avito_min": 38_000, "avito_max": 58_000},
+    "rtx3080":    {"name": "RTX 3080",         "hashrate": 95,  "price_dns": 95_000,  "avito_min": 55_000, "avito_max": 85_000},
+    "rtx3090":    {"name": "RTX 3090",         "hashrate": 120, "price_dns": 140_000, "avito_min": 80_000, "avito_max": 125_000},
+    "rtx4070":    {"name": "RTX 4070",         "hashrate": 110, "price_dns": 110_000, "avito_min": 70_000, "avito_max": 100_000},
+    "rtx4080":    {"name": "RTX 4080",         "hashrate": 145, "price_dns": 180_000, "avito_min": 110_000,"avito_max": 165_000},
+    "rtx4090":    {"name": "RTX 4090",         "hashrate": 210, "price_dns": 280_000, "avito_min": 170_000,"avito_max": 250_000},
+}
+
+# Рамы для майнинг-фермы (слоты под видеокарты)
+MINER_FRAMES = {
+    "frame_6":   {"name": "Рама на 6 карт",   "slots": 6,  "price_dns": 12_000,  "avito_min": 6_000,  "avito_max": 11_000},
+    "frame_8":   {"name": "Рама на 8 карт",   "slots": 8,  "price_dns": 18_000,  "avito_min": 10_000, "avito_max": 16_000},
+    "frame_12":  {"name": "Рама на 12 карт",  "slots": 12, "price_dns": 28_000,  "avito_min": 15_000, "avito_max": 25_000},
+    "frame_24":  {"name": "Рама на 24 карты", "slots": 24, "price_dns": 55_000,  "avito_min": 30_000, "avito_max": 48_000},
+}
+
+BASEMENT_PRICE = 350_000          # цена улучшения «подвал»
+CRYPTO_RATE = 18                  # сколько ₽ даёт 1 единица крипты при продаже
+CRYPTO_PER_HASH_HOUR = 0.45       # сколько крипты даёт 1 hashrate за 1 час
+
 # ====================== КЛАВИАТУРА ======================
 
 def main_keyboard():
@@ -133,7 +157,8 @@ def main_keyboard():
         [KeyboardButton("🏠 Дома"), KeyboardButton("🚤 Яхты")],
         [KeyboardButton("✈️ Самолёты"), KeyboardButton("🌍 Город")],
         [KeyboardButton("💰 Доход"), KeyboardButton("🎁 Бонус")],
-        [KeyboardButton("🏆 Топ"), KeyboardButton("📜 Статусы")],
+        [KeyboardButton("₿ Крипта"), KeyboardButton("🏆 Топ")],
+        [KeyboardButton("📜 Статусы")],
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -172,8 +197,14 @@ def get_user(user_id: int, username=None, full_name=None):
             "last_daily": 0,
             "daily_streak": 0,
             "is_admin": user_id == ADMIN_ID,
-            # для мини-игры
             "pending_job": None,
+            # === КРИПТА ===
+            "crypto": 0.0,
+            "basement": False,                    # есть ли подвал
+            "gpus": [],                           # список {"gpu_id": str, "quality": "good"/"bad"/"dead", "hashrate": int}
+            "frames": [],                         # список {"frame_id": str, "quality": ..., "slots": int, "installed": [индексы gpu]}
+            "active_frame": None,                 # индекс активной рамы или None
+            "last_crypto": time.time(),
         }
         save_users()
     else:
@@ -188,7 +219,13 @@ def get_user(user_id: int, username=None, full_name=None):
         u.setdefault("last_daily", 0)
         u.setdefault("daily_streak", 0)
         u.setdefault("pending_job", None)
-        # миграция старых игроков из уфы
+        # крипта
+        u.setdefault("crypto", 0.0)
+        u.setdefault("basement", False)
+        u.setdefault("gpus", [])
+        u.setdefault("frames", [])
+        u.setdefault("active_frame", None)
+        u.setdefault("last_crypto", time.time())
         if u.get("location") == "ufa" and u.get("money", 0) == 0 and u.get("level", 1) == 1:
             u["location"] = "vologda"
     return users[user_id]
@@ -212,11 +249,42 @@ def calculate_passive_income(user):
     return int(base * mult)
 
 def item_available(item, location):
-    """Проверяет, доступен ли предмет в текущем городе"""
     available = item.get("available_in")
     if not available:
         return True
     return location in available
+
+def has_any_house(user):
+    return any(v > 0 for v in user["houses"].values())
+
+def get_total_hashrate(user):
+    """Считает текущий hashrate активной рамы"""
+    if user["active_frame"] is None:
+        return 0
+    frames = user.get("frames", [])
+    if user["active_frame"] >= len(frames):
+        return 0
+    frame = frames[user["active_frame"]]
+    total = 0
+    for gpu_idx in frame.get("installed", []):
+        if 0 <= gpu_idx < len(user["gpus"]):
+            gpu = user["gpus"][gpu_idx]
+            if gpu["quality"] != "dead":
+                total += gpu["hashrate"]
+    return total
+
+def calculate_crypto_income(user):
+    """Сколько крипты накопилось с last_crypto"""
+    hashrate = get_total_hashrate(user)
+    if hashrate <= 0:
+        return 0.0
+    now = time.time()
+    hours = (now - user.get("last_crypto", now)) / 3600
+    if hours < 0:
+        hours = 0
+    # максимум 24 часа за раз, чтобы не абузили
+    hours = min(hours, 24)
+    return round(hashrate * hours * CRYPTO_PER_HASH_HOUR, 2)
 
 # ====================== ИГРОВЫЕ КОМАНДЫ ======================
 
@@ -228,14 +296,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = (
             f"Добро пожаловать, *{user['full_name']}*!\n"
             f"Ты начинаешь в *Вологде* с нуля.\n"
-            f"Переезжай в другие города, чтобы открывать новые бизнесы, дома и транспорт.\n"
+            f"Переезжай в другие города, открывай бизнесы, дома и транспорт.\n"
+            f"Также доступен майнинг криптовалюты ₿!\n"
             f"Стань самым богатым!"
         )
         if is_admin(update.effective_user.id):
             text += "\n\n👑 Ты Создатель."
     else:
         loc = LOCATIONS[user["location"]]
-        text = f"С возвращением!\nСтатус: *{get_status(user)}*\nГород: *{loc['name']}*\nДеньги: *{user['money']:,} ₽*"
+        text = (
+            f"С возвращением!\n"
+            f"Статус: *{get_status(user)}*\n"
+            f"Город: *{loc['name']}*\n"
+            f"Деньги: *{user['money']:,} ₽*\n"
+            f"Крипта: *{user.get('crypto', 0):.2f} ₿*"
+        )
     await update.message.reply_text(text, parse_mode="Markdown", reply_markup=main_keyboard())
 
 async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -245,11 +320,14 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     loc = LOCATIONS[user["location"]]
     passive = calculate_passive_income(user)
+    hashrate = get_total_hashrate(user)
+    pending_crypto = calculate_crypto_income(user)
 
     def fmt(items, data):
         lines = [f"• {data[k]['name']}: {v}" for k, v in items.items() if v > 0]
         return "\n".join(lines) if lines else "нет"
 
+    basement = "✅ есть" if user.get("basement") else "❌ нет"
     text = (
         f"*Профиль*\n\n"
         f"Имя: {user['full_name']}\n"
@@ -257,7 +335,10 @@ async def status_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Уровень: *{user['level']}*\n"
         f"Город: *{loc['name']}* ({loc['country']}) ×{loc['multiplier']}\n"
         f"Деньги: *{user['money']:,} ₽*\n"
-        f"Пассив: *{passive:,} ₽/час*\n"
+        f"Крипта: *{user.get('crypto', 0):.2f} ₿* (+{pending_crypto:.2f} ждёт сбора)\n"
+        f"Хешрейт: *{hashrate}* H/ч\n"
+        f"Подвал: {basement}\n"
+        f"Пассив (бизнес): *{passive:,} ₽/час*\n"
         f"Серия бонусов: *{user.get('daily_streak', 0)}*\n\n"
         f"*Бизнесы:*\n{fmt(user['businesses'], BUSINESSES)}\n\n"
         f"*Машины:*\n{fmt(user['cars'], CARS)}\n\n"
@@ -311,11 +392,10 @@ async def daily(update: Update, context: ContextTypes.DEFAULT_TYPE):
     now = time.time()
     last = user.get("last_daily", 0)
 
-    if now - last < 20 * 3600:  # 20 часов
+    if now - last < 20 * 3600:
         left = int((20 * 3600 - (now - last)) / 3600)
         return await update.message.reply_text(f"Бонус ещё недоступен.\nОсталось примерно {left} ч.")
 
-    # Серия
     if now - last < 48 * 3600:
         user["daily_streak"] = user.get("daily_streak", 0) + 1
     else:
@@ -341,14 +421,14 @@ async def top_players(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return await update.message.reply_text("Пока никто не играет.")
 
     sorted_users = sorted(users.values(), key=lambda x: x["money"], reverse=True)[:10]
-    text = "*🏆 Топ-10 игроков:*\n\n"
+    text = "*🏆 Топ-10 игроков (по деньгам):*\n\n"
     for i, u in enumerate(sorted_users, 1):
         medal = {1: "🥇", 2: "🥈", 3: "🥉"}.get(i, f"{i}.")
         name = u.get("full_name", "Игрок")
         text += f"{medal} {name} — *{u['money']:,} ₽*\n"
     await update.message.reply_text(text, parse_mode="Markdown")
 
-# ---------- МАГАЗИНЫ (только доступные в текущем городе) ----------
+# ---------- МАГАЗИНЫ ----------
 
 async def shop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(update.effective_user.id)
@@ -363,7 +443,7 @@ async def shop(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )] for k, v in available
     ]
     await update.message.reply_text(
-        f"Бизнесы в *{LOCATIONS[loc]['name']}*:\n(доступны только в определённых городах)",
+        f"Бизнесы в *{LOCATIONS[loc]['name']}*:",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
@@ -373,7 +453,7 @@ async def cars_shop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     loc = user["location"]
     available = [(k, v) for k, v in CARS.items() if item_available(v, loc)]
     if not available:
-        return await update.message.reply_text("В этом городе нет машин. Переезжай в более крупный город!")
+        return await update.message.reply_text("В этом городе нет машин. Переезжай!")
     keyboard = [
         [InlineKeyboardButton(
             f"{v['name']} — {v['price']:,} ₽ (×{user['cars'][k]})",
@@ -398,8 +478,13 @@ async def houses_shop(update: Update, context: ContextTypes.DEFAULT_TYPE):
             callback_data=f"buyhouse_{k}"
         )] for k, v in available
     ]
+    # кнопка улучшения подвала
+    if has_any_house(user) and not user.get("basement"):
+        keyboard.append([InlineKeyboardButton(f"🔧 Улучшение «Подвал» — {BASEMENT_PRICE:,} ₽", callback_data="buy_basement")])
+    elif user.get("basement"):
+        keyboard.append([InlineKeyboardButton("✅ Подвал уже есть", callback_data="noop")])
     await update.message.reply_text(
-        f"Дома в *{LOCATIONS[loc]['name']}*:",
+        f"Дома в *{LOCATIONS[loc]['name']}*:\n(для майнинга нужен подвал)",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
@@ -409,7 +494,7 @@ async def yachts_shop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     loc = user["location"]
     available = [(k, v) for k, v in YACHTS.items() if item_available(v, loc)]
     if not available:
-        return await update.message.reply_text("Яхты доступны только в портовых и богатых городах (СПб, Стамбул, Дубай, Монако...).")
+        return await update.message.reply_text("Яхты доступны только в портовых и богатых городах.")
     keyboard = [
         [InlineKeyboardButton(
             f"{v['name']} — {v['price']:,} ₽ (×{user.get('yachts', {}).get(k, 0)})",
@@ -427,7 +512,7 @@ async def planes_shop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     loc = user["location"]
     available = [(k, v) for k, v in PLANES.items() if item_available(v, loc)]
     if not available:
-        return await update.message.reply_text("Самолёты и вертолёты доступны в крупных городах (Москва, Дубай, Лондон, Монако...).")
+        return await update.message.reply_text("Самолёты доступны в крупных городах.")
     keyboard = [
         [InlineKeyboardButton(
             f"{v['name']} — {v['price']:,} ₽ (×{user.get('planes', {}).get(k, 0)})",
@@ -452,15 +537,45 @@ async def city_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )])
     await update.message.reply_text(
         f"Сейчас: *{LOCATIONS[current]['name']}*\n\n"
-        f"Переезд открывает новые бизнесы, дома и транспорт, которые доступны только в определённых городах.",
+        f"Переезд открывает новые бизнесы, дома и транспорт.",
         reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="Markdown"
     )
 
-# ---------- МИНИ-ИГРА ПРИ РАБОТЕ ----------
+# ====================== КРИПТА МЕНЮ ======================
+
+async def crypto_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = get_user(update.effective_user.id)
+    if not user["registered"]:
+        return await update.message.reply_text("Сначала /start")
+
+    hashrate = get_total_hashrate(user)
+    pending = calculate_crypto_income(user)
+    basement = "✅" if user.get("basement") else "❌"
+
+    text = (
+        f"*₿ Криптовалюта*\n\n"
+        f"Баланс: *{user.get('crypto', 0):.2f} ₿*\n"
+        f"Ожидает сбора: *{pending:.2f} ₿*\n"
+        f"Текущий хешрейт: *{hashrate}* H/ч\n"
+        f"Подвал: {basement}\n"
+        f"Видеокарт: {len(user.get('gpus', []))}\n"
+        f"Рам: {len(user.get('frames', []))}\n\n"
+        f"1 ₿ ≈ {CRYPTO_RATE} ₽"
+    )
+
+    keyboard = [
+        [InlineKeyboardButton("⛏ Собрать крипту", callback_data="crypto_collect")],
+        [InlineKeyboardButton("🛒 DNS (официал)", callback_data="crypto_dns"),
+         InlineKeyboardButton("📦 Авито (б/у)", callback_data="crypto_avito")],
+        [InlineKeyboardButton("🖥 Мои видеокарты", callback_data="crypto_my_gpus")],
+        [InlineKeyboardButton("🔧 Мои рамы / Установка", callback_data="crypto_frames")],
+        [InlineKeyboardButton("💸 Продать крипту", callback_data="crypto_sell")],
+        [InlineKeyboardButton("🏠 Купить подвал", callback_data="buy_basement")],
+    ]
+    await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
 
 def generate_minigame():
-    """Генерирует простой арифметический вопрос + варианты ответов"""
     a = random.randint(2, 12)
     b = random.randint(2, 12)
     op = random.choice(["+", "-", "*"])
@@ -476,7 +591,6 @@ def generate_minigame():
         correct = a * b
         question = f"{a} × {b} = ?"
 
-    # генерируем 3 неправильных ответа
     wrongs = set()
     while len(wrongs) < 3:
         delta = random.randint(1, 8)
@@ -495,7 +609,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(query.from_user.id)
     data = query.data
 
-    # === Выбор работы → запуск мини-игры ===
+    # === Работа + мини-игра ===
     if data.startswith("job_"):
         job_id = data[4:]
         job = JOBS.get(job_id)
@@ -508,7 +622,6 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             left = int(job["cooldown"] - (now - user["last_work"]))
             return await query.answer(f"Подожди {left} сек.", show_alert=True)
 
-        # Генерируем мини-игру
         question, correct, options = generate_minigame()
         user["pending_job"] = {
             "job_id": job_id,
@@ -517,10 +630,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         }
         save_users()
 
-        keyboard = [
-            [InlineKeyboardButton(str(opt), callback_data=f"mg_{opt}")]
-            for opt in options
-        ]
+        keyboard = [[InlineKeyboardButton(str(opt), callback_data=f"mg_{opt}")] for opt in options]
         await query.edit_message_text(
             f"Работа: *{job['name']}*\n\n"
             f"🧠 *Мини-игра*\n"
@@ -531,17 +641,14 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # === Ответ на мини-игру ===
     if data.startswith("mg_"):
         pending = user.get("pending_job")
         if not pending:
             return await query.edit_message_text("Сессия работы устарела. Выбери работу заново.")
-
         try:
             answer = int(data[3:])
         except ValueError:
             return
-
         job = JOBS.get(pending["job_id"])
         if not job:
             user["pending_job"] = None
@@ -549,21 +656,18 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return await query.edit_message_text("Ошибка работы.")
 
         now = time.time()
-        # защита от слишком долгого ответа (2 минуты)
         if now - pending.get("started", 0) > 120:
             user["pending_job"] = None
             save_users()
-            return await query.edit_message_text("Время на ответ истекло. Попробуй снова.")
+            return await query.edit_message_text("Время на ответ истекло.")
 
         loc_mult = LOCATIONS[user["location"]]["multiplier"]
         base_pay = random.randint(job["pay_min"], job["pay_max"])
         pay = int(base_pay * loc_mult)
 
-        correct = pending["correct"]
-        success = answer == correct
-
         user["last_work"] = now
         user["pending_job"] = None
+        success = answer == pending["correct"]
 
         if success:
             user["money"] += pay
@@ -573,27 +677,26 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 level_up = f"\n\n🎉 Уровень → *{user['level']}*!"
             save_users()
             await query.edit_message_text(
-                f"✅ Верно! ({correct})\n\n"
+                f"✅ Верно! ({pending['correct']})\n\n"
                 f"Работа: *{job['name']}*\n"
                 f"Заработано: *{pay:,} ₽*\n"
                 f"Баланс: *{user['money']:,} ₽*{level_up}",
                 parse_mode="Markdown"
             )
         else:
-            # неправильный ответ — только 25-40% зарплаты
             reduced = int(pay * random.uniform(0.25, 0.40))
             user["money"] += reduced
             save_users()
             await query.edit_message_text(
-                f"❌ Неверно! Правильный ответ: *{correct}*\n\n"
+                f"❌ Неверно! Правильный ответ: *{pending['correct']}*\n\n"
                 f"Работа: *{job['name']}*\n"
-                f"Получено только: *{reduced:,} ₽* (штраф за ошибку)\n"
+                f"Получено только: *{reduced:,} ₽*\n"
                 f"Баланс: *{user['money']:,} ₽*",
                 parse_mode="Markdown"
             )
         return
 
-    # === Покупки ===
+    # === Покупки обычных предметов ===
     mapping = {
         "buybiz_": ("businesses", BUSINESSES),
         "buycar_": ("cars", CARS),
@@ -608,9 +711,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if item_id not in catalog:
                 return
             item = catalog[item_id]
-            # проверяем доступность в текущем городе
             if not item_available(item, user["location"]):
-                return await query.edit_message_text("Этот предмет недоступен в твоём городе. Переезжай!")
+                return await query.edit_message_text("Этот предмет недоступен в твоём городе.")
             price = item["price"]
             if user["money"] < price:
                 return await query.edit_message_text(f"Не хватает ({price:,} ₽)")
@@ -622,6 +724,26 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 parse_mode="Markdown"
             )
             return
+
+    # === Подвал ===
+    if data == "buy_basement":
+        if user.get("basement"):
+            return await query.edit_message_text("Подвал уже есть!")
+        if not has_any_house(user):
+            return await query.edit_message_text("Сначала купи хотя бы один дом.")
+        if user["money"] < BASEMENT_PRICE:
+            return await query.edit_message_text(f"Не хватает ({BASEMENT_PRICE:,} ₽)")
+        user["money"] -= BASEMENT_PRICE
+        user["basement"] = True
+        save_users()
+        await query.edit_message_text(
+            f"✅ Подвал построен!\nТеперь можно устанавливать майнинг-рамы.\nОстаток: *{user['money']:,} ₽*",
+            parse_mode="Markdown"
+        )
+        return
+
+    if data == "noop":
+        return await query.answer("Уже куплено", show_alert=False)
 
     # === Переезд ===
     if data.startswith("moveto_"):
@@ -637,11 +759,424 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         loc = LOCATIONS[loc_id]
         await query.edit_message_text(
             f"Переехал в *{loc['name']}* ({loc['country']})\n"
-            f"Множитель дохода: ×{loc['multiplier']}\n"
-            f"Остаток: *{user['money']:,} ₽*\n\n"
-            f"Теперь тебе доступны новые бизнесы, дома и транспорт этого города!",
+            f"Множитель: ×{loc['multiplier']}\n"
+            f"Остаток: *{user['money']:,} ₽*",
             parse_mode="Markdown"
         )
+        return
+
+    # ==================== КРИПТА ====================
+
+    # Сбор крипты
+    if data == "crypto_collect":
+        pending = calculate_crypto_income(user)
+        if pending <= 0:
+            return await query.edit_message_text("Нечего собирать. Установи видеокарты в раму и подожди.")
+        user["crypto"] = round(user.get("crypto", 0) + pending, 2)
+        user["last_crypto"] = time.time()
+        save_users()
+        await query.edit_message_text(
+            f"⛏ Собрано: *{pending:.2f} ₿*\n"
+            f"Всего крипты: *{user['crypto']:.2f} ₿*",
+            parse_mode="Markdown"
+        )
+        return
+
+    # Продать крипту
+    if data == "crypto_sell":
+        amount = user.get("crypto", 0)
+        if amount < 1:
+            return await query.edit_message_text("Мало крипты для продажи (минимум 1 ₿).")
+        # продаём всё
+        money = int(amount * CRYPTO_RATE)
+        user["money"] += money
+        user["crypto"] = 0.0
+        save_users()
+        await query.edit_message_text(
+            f"💸 Продано *{amount:.2f} ₿* за *{money:,} ₽*\n"
+            f"Баланс: *{user['money']:,} ₽*",
+            parse_mode="Markdown"
+        )
+        return
+
+    # DNS магазин
+    if data == "crypto_dns":
+        keyboard = []
+        keyboard.append([InlineKeyboardButton("——— Видеокарты ———", callback_data="noop")])
+        for gid, g in GPUS.items():
+            keyboard.append([InlineKeyboardButton(
+                f"{g['name']} — {g['price_dns']:,} ₽ ({g['hashrate']} H)",
+                callback_data=f"buygpu_dns_{gid}"
+            )])
+        keyboard.append([InlineKeyboardButton("——— Рамы ———", callback_data="noop")])
+        for fid, f in MINER_FRAMES.items():
+            keyboard.append([InlineKeyboardButton(
+                f"{f['name']} — {f['price_dns']:,} ₽ ({f['slots']} слотов)",
+                callback_data=f"buyframe_dns_{fid}"
+            )])
+        keyboard.append([InlineKeyboardButton("« Назад", callback_data="crypto_back")])
+        await query.edit_message_text(
+            "*🛒 DNS — официальный магазин*\nВсё новое, качество отличное.\nЦены выше, но без сюрпризов.",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
+        return
+
+    # Авито
+    if data == "crypto_avito":
+        keyboard = []
+        keyboard.append([InlineKeyboardButton("——— Видеокарты (б/у) ———", callback_data="noop")])
+        for gid, g in GPUS.items():
+            keyboard.append([InlineKeyboardButton(
+                f"{g['name']} — {g['avito_min']:,}–{g['avito_max']:,} ₽",
+                callback_data=f"buygpu_avito_{gid}"
+            )])
+        keyboard.append([InlineKeyboardButton("——— Рамы (б/у) ———", callback_data="noop")])
+        for fid, f in MINER_FRAMES.items():
+            keyboard.append([InlineKeyboardButton(
+                f"{f['name']} — {f['avito_min']:,}–{f['avito_max']:,} ₽",
+                callback_data=f"buyframe_avito_{fid}"
+            )])
+        keyboard.append([InlineKeyboardButton("« Назад", callback_data="crypto_back")])
+        await query.edit_message_text(
+            "*📦 Авито — б/у рынок*\nЦены ниже, но:\n"
+            "• 65% — нормальная карта\n"
+            "• 25% — плохая (хешрейт −50%)\n"
+            "• 10% — сразу мёртвая\n"
+            "Покупаешь на свой страх и риск!",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
+        return
+
+    if data == "crypto_back":
+        # просто возвращаем в меню крипты (через новое сообщение нельзя, поэтому текст)
+        hashrate = get_total_hashrate(user)
+        pending = calculate_crypto_income(user)
+        basement = "✅" if user.get("basement") else "❌"
+        text = (
+            f"*₿ Криптовалюта*\n\n"
+            f"Баланс: *{user.get('crypto', 0):.2f} ₿*\n"
+            f"Ожидает сбора: *{pending:.2f} ₿*\n"
+            f"Хешрейт: *{hashrate}* H/ч\n"
+            f"Подвал: {basement}\n"
+            f"Видеокарт: {len(user.get('gpus', []))}\n"
+            f"Рам: {len(user.get('frames', []))}"
+        )
+        keyboard = [
+            [InlineKeyboardButton("⛏ Собрать крипту", callback_data="crypto_collect")],
+            [InlineKeyboardButton("🛒 DNS", callback_data="crypto_dns"),
+             InlineKeyboardButton("📦 Авито", callback_data="crypto_avito")],
+            [InlineKeyboardButton("🖥 Мои видеокарты", callback_data="crypto_my_gpus")],
+            [InlineKeyboardButton("🔧 Мои рамы", callback_data="crypto_frames")],
+            [InlineKeyboardButton("💸 Продать крипту", callback_data="crypto_sell")],
+            [InlineKeyboardButton("🏠 Купить подвал", callback_data="buy_basement")],
+        ]
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return
+
+    # Покупка видеокарты DNS
+    if data.startswith("buygpu_dns_"):
+        gid = data[11:]
+        if gid not in GPUS:
+            return
+        g = GPUS[gid]
+        price = g["price_dns"]
+        if user["money"] < price:
+            return await query.edit_message_text(f"Не хватает ({price:,} ₽)")
+        user["money"] -= price
+        user["gpus"].append({
+            "gpu_id": gid,
+            "quality": "good",
+            "hashrate": g["hashrate"],
+            "source": "dns"
+        })
+        save_users()
+        await query.edit_message_text(
+            f"✅ Куплено в DNS: *{g['name']}*\n"
+            f"Качество: отличное\n"
+            f"Хешрейт: {g['hashrate']} H\n"
+            f"Остаток: *{user['money']:,} ₽*",
+            parse_mode="Markdown"
+        )
+        return
+
+    # Покупка видеокарты Авито
+    if data.startswith("buygpu_avito_"):
+        gid = data[13:]
+        if gid not in GPUS:
+            return
+        g = GPUS[gid]
+        price = random.randint(g["avito_min"], g["avito_max"])
+        if user["money"] < price:
+            return await query.edit_message_text(f"Не хватает (~{price:,} ₽)")
+        user["money"] -= price
+
+        roll = random.random()
+        if roll < 0.10:          # 10% мёртвая
+            quality = "dead"
+            hr = 0
+            qtext = "💀 МЁРТВАЯ (сразу не работает)"
+        elif roll < 0.35:        # 25% плохая
+            quality = "bad"
+            hr = max(1, g["hashrate"] // 2)
+            qtext = f"⚠️ Плохая (хешрейт {hr} вместо {g['hashrate']})"
+        else:                    # 65% нормальная
+            quality = "good"
+            hr = g["hashrate"]
+            qtext = f"✅ Нормальная ({hr} H)"
+
+        user["gpus"].append({
+            "gpu_id": gid,
+            "quality": quality,
+            "hashrate": hr,
+            "source": "avito"
+        })
+        save_users()
+        await query.edit_message_text(
+            f"📦 Куплено на Авито: *{g['name']}*\n"
+            f"Цена: {price:,} ₽\n"
+            f"{qtext}\n"
+            f"Остаток: *{user['money']:,} ₽*",
+            parse_mode="Markdown"
+        )
+        return
+
+    # Покупка рамы DNS
+    if data.startswith("buyframe_dns_"):
+        fid = data[13:]
+        if fid not in MINER_FRAMES:
+            return
+        f = MINER_FRAMES[fid]
+        price = f["price_dns"]
+        if user["money"] < price:
+            return await query.edit_message_text(f"Не хватает ({price:,} ₽)")
+        if not user.get("basement"):
+            return await query.edit_message_text("Сначала нужен подвал! Купи дом и улучшение «Подвал».")
+        user["money"] -= price
+        user["frames"].append({
+            "frame_id": fid,
+            "quality": "good",
+            "slots": f["slots"],
+            "installed": [],
+            "source": "dns"
+        })
+        # если активной рамы нет — делаем эту активной
+        if user["active_frame"] is None:
+            user["active_frame"] = len(user["frames"]) - 1
+        save_users()
+        await query.edit_message_text(
+            f"✅ Куплена рама: *{f['name']}*\n"
+            f"Слотов: {f['slots']}\n"
+            f"Остаток: *{user['money']:,} ₽*",
+            parse_mode="Markdown"
+        )
+        return
+
+    # Покупка рамы Авито
+    if data.startswith("buyframe_avito_"):
+        fid = data[15:]
+        if fid not in MINER_FRAMES:
+            return
+        f = MINER_FRAMES[fid]
+        price = random.randint(f["avito_min"], f["avito_max"])
+        if user["money"] < price:
+            return await query.edit_message_text(f"Не хватает (~{price:,} ₽)")
+        if not user.get("basement"):
+            return await query.edit_message_text("Сначала нужен подвал!")
+        user["money"] -= price
+
+        roll = random.random()
+        if roll < 0.08:
+            quality = "dead"
+            slots = 0
+            qtext = "💀 Рама сломана, слотов 0"
+        elif roll < 0.30:
+            quality = "bad"
+            slots = max(1, f["slots"] - random.randint(1, 3))
+            qtext = f"⚠️ Повреждённая (слотов {slots} вместо {f['slots']})"
+        else:
+            quality = "good"
+            slots = f["slots"]
+            qtext = f"✅ Нормальная ({slots} слотов)"
+
+        user["frames"].append({
+            "frame_id": fid,
+            "quality": quality,
+            "slots": slots,
+            "installed": [],
+            "source": "avito"
+        })
+        if user["active_frame"] is None and quality != "dead":
+            user["active_frame"] = len(user["frames"]) - 1
+        save_users()
+        await query.edit_message_text(
+            f"📦 Куплена рама на Авито: *{f['name']}*\n"
+            f"Цена: {price:,} ₽\n"
+            f"{qtext}\n"
+            f"Остаток: *{user['money']:,} ₽*",
+            parse_mode="Markdown"
+        )
+        return
+
+    # Мои видеокарты
+    if data == "crypto_my_gpus":
+        gpus = user.get("gpus", [])
+        if not gpus:
+            return await query.edit_message_text("У тебя пока нет видеокарт.\nКупи в DNS или на Авито.")
+        text = "*🖥 Твои видеокарты:*\n\n"
+        keyboard = []
+        for i, gpu in enumerate(gpus):
+            gname = GPUS.get(gpu["gpu_id"], {}).get("name", gpu["gpu_id"])
+            q = {"good": "✅", "bad": "⚠️", "dead": "💀"}.get(gpu["quality"], "?")
+            text += f"{i+1}. {q} {gname} — {gpu['hashrate']} H ({gpu.get('source', '?')})\n"
+            # кнопка продать
+            sell_price = int(GPUS.get(gpu["gpu_id"], {}).get("price_dns", 10000) * 0.35)
+            if gpu["quality"] == "dead":
+                sell_price = 500
+            elif gpu["quality"] == "bad":
+                sell_price = int(sell_price * 0.5)
+            keyboard.append([InlineKeyboardButton(
+                f"Продать #{i+1} за ~{sell_price:,} ₽",
+                callback_data=f"sellgpu_{i}"
+            )])
+        keyboard.append([InlineKeyboardButton("« Назад", callback_data="crypto_back")])
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return
+
+    # Продажа видеокарты
+    if data.startswith("sellgpu_"):
+        try:
+            idx = int(data[8:])
+        except:
+            return
+        gpus = user.get("gpus", [])
+        if not (0 <= idx < len(gpus)):
+            return await query.edit_message_text("Карта не найдена.")
+        gpu = gpus[idx]
+        base = GPUS.get(gpu["gpu_id"], {}).get("price_dns", 10000)
+        if gpu["quality"] == "dead":
+            price = 500
+        elif gpu["quality"] == "bad":
+            price = int(base * 0.18)
+        else:
+            price = int(base * 0.35)
+
+        # убираем из установленных рам
+        for frame in user.get("frames", []):
+            if idx in frame.get("installed", []):
+                frame["installed"] = [x for x in frame["installed"] if x != idx]
+            # сдвигаем индексы выше
+            frame["installed"] = [x - 1 if x > idx else x for x in frame["installed"]]
+
+        user["gpus"].pop(idx)
+        user["money"] += price
+        save_users()
+        await query.edit_message_text(
+            f"Продано за *{price:,} ₽*\nОстаток: *{user['money']:,} ₽*",
+            parse_mode="Markdown"
+        )
+        return
+
+    # Мои рамы + установка
+    if data == "crypto_frames":
+        frames = user.get("frames", [])
+        if not frames:
+            return await query.edit_message_text("У тебя нет рам.\nКупи в DNS или на Авито (нужен подвал).")
+        text = "*🔧 Твои рамы:*\n\n"
+        keyboard = []
+        for i, fr in enumerate(frames):
+            fname = MINER_FRAMES.get(fr["frame_id"], {}).get("name", fr["frame_id"])
+            active = " ⭐" if user.get("active_frame") == i else ""
+            installed = len(fr.get("installed", []))
+            text += (
+                f"{i+1}. {fname}{active}\n"
+                f"   Слотов: {installed}/{fr['slots']} | Качество: {fr['quality']}\n"
+            )
+            keyboard.append([
+                InlineKeyboardButton(f"Установить карты в раму #{i+1}", callback_data=f"install_{i}"),
+                InlineKeyboardButton(f"Сделать активной #{i+1}", callback_data=f"setactive_{i}")
+            ])
+            # продать раму
+            sell_p = int(MINER_FRAMES.get(fr["frame_id"], {}).get("price_dns", 10000) * 0.3)
+            if fr["quality"] != "good":
+                sell_p = int(sell_p * 0.4)
+            keyboard.append([InlineKeyboardButton(f"Продать раму #{i+1} (~{sell_p:,} ₽)", callback_data=f"sellframe_{i}")])
+        keyboard.append([InlineKeyboardButton("« Назад", callback_data="crypto_back")])
+        await query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+        return
+
+    if data.startswith("setactive_"):
+        try:
+            idx = int(data[10:])
+        except:
+            return
+        if 0 <= idx < len(user.get("frames", [])):
+            user["active_frame"] = idx
+            save_users()
+            await query.edit_message_text(f"Рама #{idx+1} теперь активная. Хешрейт обновлён.")
+        return
+
+    if data.startswith("sellframe_"):
+        try:
+            idx = int(data[10:])
+        except:
+            return
+        frames = user.get("frames", [])
+        if not (0 <= idx < len(frames)):
+            return
+        fr = frames[idx]
+        base = MINER_FRAMES.get(fr["frame_id"], {}).get("price_dns", 10000)
+        price = int(base * 0.3)
+        if fr["quality"] != "good":
+            price = int(price * 0.4)
+        # освобождаем карты (они остаются у игрока)
+        user["frames"].pop(idx)
+        if user.get("active_frame") == idx:
+            user["active_frame"] = 0 if user["frames"] else None
+        elif user.get("active_frame") is not None and user["active_frame"] > idx:
+            user["active_frame"] -= 1
+        user["money"] += price
+        save_users()
+        await query.edit_message_text(f"Рама продана за *{price:,} ₽*", parse_mode="Markdown")
+        return
+
+    # Установка карт в раму
+    if data.startswith("install_"):
+        try:
+            fidx = int(data[8:])
+        except:
+            return
+        frames = user.get("frames", [])
+        if not (0 <= fidx < len(frames)):
+            return
+        frame = frames[fidx]
+        if frame["quality"] == "dead" or frame["slots"] <= 0:
+            return await query.edit_message_text("Эта рама нерабочая.")
+
+        # свободные (не установленные ни в какую раму) карты
+        used = set()
+        for fr in frames:
+            used.update(fr.get("installed", []))
+        free_gpus = [i for i in range(len(user["gpus"])) if i not in used and user["gpus"][i]["quality"] != "dead"]
+
+        if not free_gpus:
+            return await query.edit_message_text("Нет свободных рабочих видеокарт.")
+
+        free_slots = frame["slots"] - len(frame.get("installed", []))
+        if free_slots <= 0:
+            return await query.edit_message_text("В раме нет свободных слотов.")
+
+        # ставим столько, сколько можно
+        to_install = free_gpus[:free_slots]
+        frame.setdefault("installed", []).extend(to_install)
+        save_users()
+        await query.edit_message_text(
+            f"✅ Установлено {len(to_install)} видеокарт в раму #{fidx+1}.\n"
+            f"Теперь слотов занято: {len(frame['installed'])}/{frame['slots']}\n"
+            f"Хешрейт рамы: {get_total_hashrate(user)} H/ч"
+        )
+        return
 
 # ---------- КНОПКИ СНИЗУ ----------
 
@@ -660,6 +1195,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "🎁 Бонус": daily,
         "🏆 Топ": top_players,
         "📜 Статусы": statuses_list,
+        "₿ Крипта": crypto_menu,
     }
     handler = mapping.get(text)
     if handler:
@@ -671,7 +1207,7 @@ async def admin_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id):
         return await update.message.reply_text("Нет доступа.")
     await update.message.reply_text(
-        "*Админ-команды:*\n/setmoney /addmoney /setlevel\n/give <id> <сумма>\n/resetme /users",
+        "*Админ-команды:*\n/setmoney /addmoney /setlevel\n/give <id> <сумма>\n/resetme /users\n/setcrypto <кол-во>",
         parse_mode="Markdown"
     )
 
@@ -716,6 +1252,16 @@ async def give_money(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Выдано {amount:,} ₽")
     except: await update.message.reply_text("Ошибка")
 
+async def set_crypto(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not is_admin(update.effective_user.id): return
+    if not context.args: return await update.message.reply_text("Пример: /setcrypto 100")
+    try:
+        user = get_user(update.effective_user.id)
+        user["crypto"] = float(context.args[0])
+        save_users()
+        await update.message.reply_text(f"Крипта: *{user['crypto']:.2f} ₿*", parse_mode="Markdown")
+    except: await update.message.reply_text("Ошибка")
+
 async def reset_me(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_admin(update.effective_user.id): return
     user = get_user(update.effective_user.id)
@@ -728,6 +1274,12 @@ async def reset_me(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "planes": {k: 0 for k in PLANES},
         "last_work": 0, "last_daily": 0, "daily_streak": 0,
         "pending_job": None,
+        "crypto": 0.0,
+        "basement": False,
+        "gpus": [],
+        "frames": [],
+        "active_frame": None,
+        "last_crypto": time.time(),
     })
     save_users()
     await update.message.reply_text("Прогресс полностью сброшен. Ты снова в Вологде.")
@@ -737,7 +1289,7 @@ async def list_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = "*Игроки:*\n\n"
     for uid, u in users.items():
         mark = " 👑" if u.get("is_admin") else ""
-        text += f"`{uid}` {u.get('full_name')}{mark} — {u['money']:,} ₽\n"
+        text += f"`{uid}` {u.get('full_name')}{mark} — {u['money']:,} ₽ | {u.get('crypto', 0):.1f}₿\n"
     await update.message.reply_text(text or "Пусто", parse_mode="Markdown")
 
 # ====================== ЗАПУСК ======================
@@ -759,6 +1311,7 @@ def main():
     app.add_handler(CommandHandler("yachts", yachts_shop))
     app.add_handler(CommandHandler("planes", planes_shop))
     app.add_handler(CommandHandler("city", city_menu))
+    app.add_handler(CommandHandler("crypto", crypto_menu))
 
     app.add_handler(CallbackQueryHandler(callback_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, button_handler))
@@ -768,6 +1321,7 @@ def main():
     app.add_handler(CommandHandler("addmoney", add_money))
     app.add_handler(CommandHandler("setlevel", set_level))
     app.add_handler(CommandHandler("give", give_money))
+    app.add_handler(CommandHandler("setcrypto", set_crypto))
     app.add_handler(CommandHandler("resetme", reset_me))
     app.add_handler(CommandHandler("users", list_users))
 
